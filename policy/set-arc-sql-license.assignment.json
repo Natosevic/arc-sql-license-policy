@@ -1,0 +1,10 @@
+{
+  "displayName": "Set Arc SQL LicenseType to Paid (tag-gated)",
+  "enforcementMode": "Default",
+  "policyDefinitionId": "<TO_BE_SET_BY_BICEP>",
+  "parameters": {
+    "tagName": { "value": "EnableLicenseChange" },
+    "tagValue": { "value": "true" },
+    "effect": { "value": "DeployIfNotExists" }
+  }
+}

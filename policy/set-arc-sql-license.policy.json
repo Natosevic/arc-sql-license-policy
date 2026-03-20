@@ -1,0 +1,147 @@
+{
+    "displayName": "Set Arc SQL LicenseType to Paid only for tagged extensions",
+    "policyType": "Custom",
+    "mode": "All",
+    "description": "Set Arc SQL LicenseType to Paid only for tagged extensions",
+    "metadata": {
+      "category": "SQL Server",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Enable or disable the execution of the policy."
+        },
+        "allowedValues": [
+          "DeployIfNotExists",
+          "Disabled"
+        ],
+        "defaultValue": "DeployIfNotExists"
+      },
+      "tagName": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Selector tag name",
+          "description": "Policy only applies to extensions explicitly tagged with this key."
+        },
+        "defaultValue": "EnableLicenseChange"
+      },
+      "tagValue": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Selector tag value",
+          "description": "Policy only applies when tagName equals this value."
+        },
+        "defaultValue": "true"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.HybridCompute/machines"
+          },
+          {
+            "anyOf": [
+              {
+                "field": "Microsoft.HybridCompute/machines/extensions/type",
+                "equals": "WindowsAgent.SqlServer"
+              },
+              {
+                "field": "Microsoft.HybridCompute/machines/extensions/type",
+                "equals": "LinuxAgent.SqlServer"
+              }
+            ]
+          },
+          {
+            "field": "[concat('tags[', parameters('tagName'), ']')]",
+            "equals": "[parameters('tagValue')]"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]",
+        "details": {
+          "type": "Microsoft.HybridCompute/machines/extensions",
+          "name": "[field('fullName')]",
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+          ],
+          "existenceCondition": {
+            "allOf": [
+              {
+                "value": "[if(empty(field('Microsoft.HybridCompute/machines/extensions/settings')), 0, length(intersection(field('Microsoft.HybridCompute/machines/extensions/settings'), createObject('LicenseType','Paid'))))]",
+                "equals": 1
+              }
+            ]
+          },
+          "evaluationDelay": "AfterProvisioningSuccess",
+          "deployment": {
+            "properties": {
+              "mode": "incremental",
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "extensionFullName": {
+                    "type": "string",
+                    "metadata": {
+                      "description": "The extension name in <machineName>/<extensionName> format."
+                    }
+                  },
+                  "location": {
+                    "type": "string",
+                    "metadata": {
+                      "description": "Location of the Arc machine/extension."
+                    }
+                  },
+                  "agentType": {
+                    "type": "string",
+                    "metadata": {
+                      "description": "WindowsAgent.SqlServer or LinuxAgent.SqlServer."
+                    }
+                  },
+                  "existingSettings": {
+                    "type": "object",
+                    "metadata": {
+                      "description": "Existing extension settings object."
+                    }
+                  }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.HybridCompute/machines/extensions",
+                    "apiVersion": "2019-12-12",
+                    "name": "[parameters('extensionFullName')]",
+                    "location": "[parameters('location')]",
+                    "properties": {
+                      "publisher": "Microsoft.AzureData",
+                      "type": "[parameters('agentType')]",
+                      "settings": "[union(parameters('existingSettings'), createObject('LicenseType','Paid'))]"
+                    }
+                  }
+                ]
+              },
+              "parameters": {
+                "extensionFullName": {
+                  "value": "[field('fullName')]"
+                },
+                "location": {
+                  "value": "[field('location')]"
+                },
+                "agentType": {
+                  "value": "[field('Microsoft.HybridCompute/machines/extensions/type')]"
+                },
+                "existingSettings": {
+                  "value": "[field('Microsoft.HybridCompute/machines/extensions/settings')]"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
